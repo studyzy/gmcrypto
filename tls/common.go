@@ -14,7 +14,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"fmt"
 	"github.com/studyzy/gmcrypto/internal/cpu"

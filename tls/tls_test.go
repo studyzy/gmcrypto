@@ -7,7 +7,7 @@ package tls
 import (
 	"bytes"
 	"crypto"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"

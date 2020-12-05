@@ -7,7 +7,7 @@ package tls
 import (
 	"bytes"
 	"crypto/rsa"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/pem"

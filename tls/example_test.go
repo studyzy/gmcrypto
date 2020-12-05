@@ -5,12 +5,12 @@
 package tls_test
 
 import (
-	"crypto/tls"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/tls"
+	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"log"
-	"net/http"
-	"net/http/httptest"
+	http "github.com/studyzy/gmhttp"
+	"github.com/studyzy/gmhttp/httptest"
 	"os"
 	"time"
 )

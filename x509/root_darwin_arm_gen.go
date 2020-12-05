@@ -19,7 +19,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"flag"
@@ -27,7 +27,7 @@ import (
 	"go/format"
 	"io/ioutil"
 	"log"
-	"net/http"
+	http "github.com/studyzy/gmhttp"
 	"os/exec"
 	"regexp"
 	"strings"

@@ -13,7 +13,7 @@ import (
 	"crypto/rc4"
 	"crypto/sha1"
 	"crypto/sha256"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"fmt"
 	"hash"
 

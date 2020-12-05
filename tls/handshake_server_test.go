@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/elliptic"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"

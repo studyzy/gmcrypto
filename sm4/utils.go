@@ -2,7 +2,7 @@ package sm4
 
 import (
 	"crypto/rand"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"encoding/pem"
 	"errors"
 	"io/ioutil"

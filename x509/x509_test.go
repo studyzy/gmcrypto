@@ -14,7 +14,7 @@ import (
 	"crypto/rsa"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	"crypto/x509/pkix"
+	"github.com/studyzy/gmcrypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
 	"encoding/hex"

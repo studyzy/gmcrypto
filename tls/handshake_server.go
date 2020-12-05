@@ -10,7 +10,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/subtle"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"fmt"
 	"io"

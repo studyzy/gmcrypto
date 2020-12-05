@@ -17,7 +17,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"crypto/x509"
+	"github.com/studyzy/gmcrypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"

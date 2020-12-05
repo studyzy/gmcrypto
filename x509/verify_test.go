@@ -9,7 +9,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509/pkix"
+	"github.com/studyzy/gmcrypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"

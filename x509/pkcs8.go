@@ -8,7 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"crypto/x509/pkix"
+	"github.com/studyzy/gmcrypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
 	"fmt"
