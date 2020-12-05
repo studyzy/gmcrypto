@@ -339,23 +339,23 @@ func TestTLSUniqueMatches(t *testing.T) {
 func TestVerifyHostname(t *testing.T) {
 	testenv.MustHaveExternalNetwork(t)
 
-	c, err := Dial("tcp", "www.google.com:https", nil)
+	c, err := Dial("tcp", "www.google.cn:https", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.VerifyHostname("www.google.com"); err != nil {
-		t.Fatalf("verify www.google.com: %v", err)
+	if err := c.VerifyHostname("www.google.cn"); err != nil {
+		t.Fatalf("verify www.google.cn: %v", err)
 	}
 	if err := c.VerifyHostname("www.yahoo.com"); err == nil {
 		t.Fatalf("verify www.yahoo.com succeeded")
 	}
 
-	c, err = Dial("tcp", "www.google.com:https", &Config{InsecureSkipVerify: true})
+	c, err = Dial("tcp", "www.google.cn:https", &Config{InsecureSkipVerify: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.VerifyHostname("www.google.com"); err == nil {
-		t.Fatalf("verify www.google.com succeeded with InsecureSkipVerify=true")
+	if err := c.VerifyHostname("www.google.cn"); err == nil {
+		t.Fatalf("verify www.google.cn succeeded with InsecureSkipVerify=true")
 	}
 }
 
