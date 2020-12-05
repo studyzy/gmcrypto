@@ -1,5 +1,7 @@
-github.com/studyzy/gmhttp v0.0.0-20201205180952-371eb63479d4 h1:yJRE0MHLwkhG8dDN9rrcznxzOq8G4KdW/8tuAc/jT0I=
+github.com/studyzy/gmcrypto v0.0.0-20201205182355-719004f6639d/go.mod h1:k9cwfEVR2K3kp10k9Zz7QJOjmPv8xWx/YKuYptwq710=
 github.com/studyzy/gmhttp v0.0.0-20201205180952-371eb63479d4/go.mod h1:22mEj2vmyyQZcBDOT0umBV46KzlYGENvQ8OoWTjABxw=
+github.com/studyzy/gmnet v0.0.0-20201205192356-37e21fbccf2f h1:ldJiDG9t3xm19GlkMGGvw0YM1ayL7QdLcsYmQDculbA=
+github.com/studyzy/gmnet v0.0.0-20201205192356-37e21fbccf2f/go.mod h1:cr6yE2VkFsHSKsjJwOYIODxAd6UJYH74nVqyPAco530=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c h1:9HhBz5L/UjnK9XLtiZhYAdue5BVKep3PMmS2LuPDt8k=

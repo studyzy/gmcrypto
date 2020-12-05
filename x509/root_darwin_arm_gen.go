@@ -27,7 +27,7 @@ import (
 	"go/format"
 	"io/ioutil"
 	"log"
-	http "github.com/studyzy/gmhttp"
+	http "github.com/studyzy/gmnet/http"
 	"os/exec"
 	"regexp"
 	"strings"

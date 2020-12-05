@@ -9,8 +9,8 @@ import (
 	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"log"
-	http "github.com/studyzy/gmhttp"
-	"github.com/studyzy/gmhttp/httptest"
+	http "github.com/studyzy/gmnet/http"
+	"github.com/studyzy/gmnet/http/httptest"
 	"os"
 	"time"
 )
