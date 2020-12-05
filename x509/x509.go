@@ -25,6 +25,9 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/studyzy/gmcrypto"
+	"github.com/studyzy/gmcrypto/sm2"
+	_ "github.com/studyzy/gmcrypto/sm3"
 	"io"
 	"math/big"
 	"net"
@@ -87,6 +90,19 @@ func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorith
 		oid, ok := oidFromNamedCurve(pub.Curve)
 		if !ok {
 			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported elliptic curve")
+		}
+		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
+		var paramBytes []byte
+		paramBytes, err = asn1.Marshal(oid)
+		if err != nil {
+			return
+		}
+		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
+	case *sm2.PublicKey:
+		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+		oid, ok := oidFromNamedCurve(pub.Curve)
+		if !ok {
+			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported SM2 curve")
 		}
 		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
 		var paramBytes []byte
@@ -200,6 +216,9 @@ const (
 	SHA384WithRSAPSS
 	SHA512WithRSAPSS
 	PureEd25519
+	SM2WithSM3
+	SM2WithSHA1
+	SM2WithSHA256
 )
 
 func (algo SignatureAlgorithm) isRSAPSS() bool {
@@ -314,7 +333,12 @@ var (
 	oidSignatureECDSAWithSHA384 = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 3}
 	oidSignatureECDSAWithSHA512 = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 4}
 	oidSignatureEd25519         = asn1.ObjectIdentifier{1, 3, 101, 112}
+	oidSignatureSM2WithSM3      = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 501}
+	oidSignatureSM2WithSHA1     = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 502}
+	oidSignatureSM2WithSHA256   = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 503}
+	//	oidSignatureSM3WithRSA      = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 504}
 
+	oidSM3    = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 401, 1}
 	oidSHA256 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
 	oidSHA384 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 2}
 	oidSHA512 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 3}
@@ -351,6 +375,9 @@ var signatureAlgorithmDetails = []struct {
 	{ECDSAWithSHA384, "ECDSA-SHA384", oidSignatureECDSAWithSHA384, ECDSA, crypto.SHA384},
 	{ECDSAWithSHA512, "ECDSA-SHA512", oidSignatureECDSAWithSHA512, ECDSA, crypto.SHA512},
 	{PureEd25519, "Ed25519", oidSignatureEd25519, Ed25519, crypto.Hash(0) /* no pre-hashing */},
+	{SM2WithSM3, "SM2-SM3", oidSignatureSM2WithSM3, ECDSA, crypto.Hash(gmcrypto.SM3)},
+	{SM2WithSHA1, "SM2-SHA1", oidSignatureSM2WithSHA1, ECDSA, crypto.SHA1},
+	{SM2WithSHA256, "SM2-SHA256", oidSignatureSM2WithSHA256, ECDSA, crypto.SHA256},
 }
 
 // pssParameters reflects the parameters in an AlgorithmIdentifier that
@@ -522,6 +549,7 @@ var (
 	oidNamedCurveP256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}
 	oidNamedCurveP384 = asn1.ObjectIdentifier{1, 3, 132, 0, 34}
 	oidNamedCurveP521 = asn1.ObjectIdentifier{1, 3, 132, 0, 35}
+	oidNamedCurveSM2  = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301} // http://gmssl.org/docs/oid.html
 )
 
 func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
@@ -534,6 +562,8 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 		return elliptic.P384()
 	case oid.Equal(oidNamedCurveP521):
 		return elliptic.P521()
+	case oid.Equal(oidNamedCurveSM2):
+		return sm2.P256Sm2()
 	}
 	return nil
 }
@@ -548,6 +578,8 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 		return oidNamedCurveP384, true
 	case elliptic.P521():
 		return oidNamedCurveP521, true
+	case sm2.P256Sm2():
+		return oidNamedCurveSM2, true
 	}
 
 	return nil, false
@@ -1056,6 +1088,13 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (interface{
 		x, y := elliptic.Unmarshal(namedCurve, asn1Data)
 		if x == nil {
 			return nil, errors.New("x509: failed to unmarshal elliptic curve point")
+		}
+		if namedCurve == sm2.P256Sm2() {
+			return &sm2.PublicKey{
+				Curve: namedCurve,
+				X:     x,
+				Y:     y,
+			}, nil
 		}
 		pub := &ecdsa.PublicKey{
 			Curve: namedCurve,
@@ -1992,6 +2031,9 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 		case elliptic.P521():
 			hashFunc = crypto.SHA512
 			sigAlgo.Algorithm = oidSignatureECDSAWithSHA512
+		case sm2.P256Sm2():
+			hashFunc = gmcrypto.SM3.ToHash()
+			sigAlgo.Algorithm = oidSignatureSM2WithSM3
 		default:
 			err = errors.New("x509: unknown elliptic curve")
 		}

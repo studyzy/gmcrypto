@@ -13,6 +13,9 @@ type Hash2 uint
 func NewHash2(h crypto.Hash) Hash2 {
 	return Hash2(h)
 }
+func (h Hash2) ToHash() crypto.Hash {
+	return crypto.Hash(h)
+}
 
 // HashFunc simply returns the value of h so that Hash2 implements SignerOpts.
 func (h Hash2) HashFunc() Hash2 {
