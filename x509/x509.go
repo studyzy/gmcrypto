@@ -104,7 +104,7 @@ func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorith
 		if !ok {
 			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported SM2 curve")
 		}
-		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
+		publicKeyAlgorithm.Algorithm = oidPublicKeySM2
 		var paramBytes []byte
 		paramBytes, err = asn1.Marshal(oid)
 		if err != nil {
@@ -247,6 +247,7 @@ const (
 	DSA
 	ECDSA
 	Ed25519
+	SM2
 )
 
 var publicKeyAlgoName = [...]string{
@@ -254,6 +255,7 @@ var publicKeyAlgoName = [...]string{
 	DSA:     "DSA",
 	ECDSA:   "ECDSA",
 	Ed25519: "Ed25519",
+	SM2:"SM2",
 }
 
 func (algo PublicKeyAlgorithm) String() string {
@@ -511,6 +513,7 @@ var (
 	oidPublicKeyRSA     = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
 	oidPublicKeyDSA     = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
 	oidPublicKeyECDSA   = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+	oidPublicKeySM2   = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301}// 参考：基于SM2密码算法的数字证书格式规范
 	oidPublicKeyEd25519 = oidSignatureEd25519
 )
 
@@ -524,6 +527,8 @@ func getPublicKeyAlgorithmFromOID(oid asn1.ObjectIdentifier) PublicKeyAlgorithm 
 		return ECDSA
 	case oid.Equal(oidPublicKeyEd25519):
 		return Ed25519
+	case oid.Equal(oidPublicKeySM2):
+		return SM2
 	}
 	return UnknownPublicKeyAlgorithm
 }

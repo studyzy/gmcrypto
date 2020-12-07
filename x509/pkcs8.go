@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"github.com/studyzy/gmcrypto/sm2"
 	"github.com/studyzy/gmcrypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
@@ -60,7 +61,17 @@ func ParsePKCS8PrivateKey(der []byte) (key interface{}, err error) {
 			return nil, errors.New("x509: failed to parse EC private key embedded in PKCS#8: " + err.Error())
 		}
 		return key, nil
-
+	case privKey.Algo.Algorithm.Equal(oidPublicKeySM2):
+		bytes := privKey.Algo.Parameters.FullBytes
+		namedCurveOID := new(asn1.ObjectIdentifier)
+		if _, err := asn1.Unmarshal(bytes, namedCurveOID); err != nil {
+			namedCurveOID = nil
+		}
+		key, err = parseSM2PrivateKey(namedCurveOID, privKey.PrivateKey)
+		if err != nil {
+			return nil, errors.New("x509: failed to parse SM2 private key embedded in PKCS#8: " + err.Error())
+		}
+		return key, nil
 	case privKey.Algo.Algorithm.Equal(oidPublicKeyEd25519):
 		if l := len(privKey.Algo.Parameters.FullBytes); l != 0 {
 			return nil, errors.New("x509: invalid Ed25519 private key parameters")
@@ -117,7 +128,27 @@ func MarshalPKCS8PrivateKey(key interface{}) ([]byte, error) {
 		if privKey.PrivateKey, err = marshalECPrivateKeyWithOID(k, nil); err != nil {
 			return nil, errors.New("x509: failed to marshal EC private key while building PKCS#8: " + err.Error())
 		}
+	case *sm2.PrivateKey:
+		oid, ok := oidFromNamedCurve(k.Curve)
+		if !ok {
+			return nil, errors.New("x509: unknown SM2 curve while marshaling to PKCS#8")
+		}
 
+		oidBytes, err := asn1.Marshal(oid)
+		if err != nil {
+			return nil, errors.New("x509: failed to marshal SM2 curve OID: " + err.Error())
+		}
+
+		privKey.Algo = pkix.AlgorithmIdentifier{
+			Algorithm: oidPublicKeySM2,
+			Parameters: asn1.RawValue{
+				FullBytes: oidBytes,
+			},
+		}
+
+		if privKey.PrivateKey, err = marshalSM2PrivateKeyWithOID(k, nil); err != nil {
+			return nil, errors.New("x509: failed to marshal SM2 private key while building PKCS#8: " + err.Error())
+		}
 	case ed25519.PrivateKey:
 		privKey.Algo = pkix.AlgorithmIdentifier{
 			Algorithm: oidPublicKeyEd25519,
