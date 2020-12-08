@@ -14,6 +14,9 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+
+	"github.com/studyzy/gmcrypto"
+	"github.com/studyzy/gmcrypto/sm3"
 )
 
 // Split a premaster secret in two as specified in RFC 4346, Section 5.
@@ -93,6 +96,8 @@ func prfAndHashForVersion(version uint16, suite *cipherSuite) (func(result, secr
 			return prf12(sha512.New384), crypto.SHA384
 		}
 		return prf12(sha256.New), crypto.SHA256
+	case VersionGMTLS11:
+		return prf12(sm3.New), gmcrypto.SM3.ToHash()
 	default:
 		panic("unknown version")
 	}
@@ -148,7 +153,7 @@ func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 
 	prf, hash := prfAndHashForVersion(version, cipherSuite)
 	if hash != 0 {
-		return finishedHash{hash.New(), hash.New(), nil, nil, buffer, version, prf}
+		return finishedHash{gmcrypto.NewHash2(hash).New(), gmcrypto.NewHash2(hash).New(), nil, nil, buffer, version, prf}
 	}
 
 	return finishedHash{sha1.New(), sha1.New(), md5.New(), md5.New(), buffer, version, prf}
@@ -175,7 +180,7 @@ func (h *finishedHash) Write(msg []byte) (n int, err error) {
 	h.client.Write(msg)
 	h.server.Write(msg)
 
-	if h.version < VersionTLS12 {
+	if h.version < VersionTLS12 && h.version != VersionGMTLS11 {
 		h.clientMD5.Write(msg)
 		h.serverMD5.Write(msg)
 	}
@@ -216,11 +221,11 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 // hashForClientCertificate returns the handshake messages so far, pre-hashed if
 // necessary, suitable for signing by a TLS client certificate.
 func (h finishedHash) hashForClientCertificate(sigType uint8, hashAlg crypto.Hash, masterSecret []byte) []byte {
-	if (h.version >= VersionTLS12 || sigType == signatureEd25519) && h.buffer == nil {
+	if (h.version >= VersionTLS12 || sigType == signatureEd25519 || sigType == signatureSM2) && h.buffer == nil {
 		panic("tls: handshake hash for a client certificate requested after discarding the handshake buffer")
 	}
-
-	if sigType == signatureEd25519 {
+	//SM2签名的时候不能先算Hash
+	if sigType == signatureEd25519 || sigType == signatureSM2 {
 		return h.buffer
 	}
 

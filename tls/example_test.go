@@ -5,14 +5,18 @@
 package tls_test
 
 import (
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/studyzy/gmcrypto/tls"
 	"github.com/studyzy/gmcrypto/x509"
-	"errors"
-	"log"
-	http "github.com/studyzy/gmnet/http"
+	"github.com/studyzy/gmnet/http"
 	"github.com/studyzy/gmnet/http/httptest"
-	"os"
-	"time"
 )
 
 // zeroSource is an io.Reader that returns an unlimited number of zero bytes.
@@ -235,4 +239,33 @@ func ExampleConfig_verifyPeerCertificate() {
 
 	// Note that when InsecureSkipVerify and VerifyPeerCertificate are in use,
 	// ConnectionState.VerifiedChains will be nil.
+}
+func TestGMHttps(t *testing.T) {
+
+	//proxy := func(_ *http.Request) (*url.URL, error) {
+	//	return url.Parse("http://localhost:8866")
+	//}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		//Proxy: proxy,
+	}
+
+	client := &http.Client{Transport: tr}
+
+	//resp, err := client.Get("https://www.ssldemo.cn/")
+	//resp, err := client.Get("https://gm.ssldemo.cn:10089/")
+	resp, err := client.Get("https://gm.ssldemo.cn/")
+
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body[:500]))
+	certInfo := resp.TLS.PeerCertificates[0]
+	fmt.Println("过期时间:", certInfo.NotAfter)
+	fmt.Println("组织信息:", certInfo.Subject)
+	fmt.Println("签名算法：", certInfo.SignatureAlgorithm.String())
+	fmt.Println("发行人：", certInfo.Issuer.CommonName)
 }

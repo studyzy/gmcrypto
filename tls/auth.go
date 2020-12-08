@@ -16,6 +16,9 @@ import (
 	"fmt"
 	"hash"
 	"io"
+
+	"github.com/studyzy/gmcrypto"
+	"github.com/studyzy/gmcrypto/sm2"
 )
 
 // verifyHandshakeSignature verifies a signature against pre-hashed
@@ -35,6 +38,21 @@ func verifyHandshakeSignature(sigType uint8, pubkey crypto.PublicKey, hashFunc c
 			return errors.New("ECDSA signature contained zero or negative values")
 		}
 		if !ecdsa.Verify(pubKey, signed, ecdsaSig.R, ecdsaSig.S) {
+			return errors.New("ECDSA verification failure")
+		}
+	case signatureSM2:
+		pubKey, ok := pubkey.(*sm2.PublicKey)
+		if !ok {
+			return fmt.Errorf("expected an SM2 public key, got %T", pubkey)
+		}
+		ecdsaSig := new(ecdsaSignature)
+		if _, err := asn1.Unmarshal(sig, ecdsaSig); err != nil {
+			return err
+		}
+		if ecdsaSig.R.Sign() <= 0 || ecdsaSig.S.Sign() <= 0 {
+			return errors.New("ECDSA signature contained zero or negative values")
+		}
+		if !sm2.Sm2Verify(pubKey, signed, nil, ecdsaSig.R, ecdsaSig.S, gmcrypto.NewHash2(hashFunc).New()) {
 			return errors.New("ECDSA verification failure")
 		}
 	case signatureEd25519:
@@ -113,6 +131,8 @@ func typeAndHashFromSignatureScheme(signatureAlgorithm SignatureScheme) (sigType
 		sigType = signatureECDSA
 	case Ed25519:
 		sigType = signatureEd25519
+	case SM2WITHSM3:
+		sigType = signatureSM2
 	default:
 		return 0, 0, fmt.Errorf("unsupported signature algorithm: %#04x", signatureAlgorithm)
 	}
@@ -126,6 +146,8 @@ func typeAndHashFromSignatureScheme(signatureAlgorithm SignatureScheme) (sigType
 	case PKCS1WithSHA512, PSSWithSHA512, ECDSAWithP521AndSHA512:
 		hash = crypto.SHA512
 	case Ed25519:
+		hash = directSigning
+	case SM2WITHSM3:
 		hash = directSigning
 	default:
 		return 0, 0, fmt.Errorf("unsupported signature algorithm: %#04x", signatureAlgorithm)
@@ -142,6 +164,8 @@ func legacyTypeAndHashFromPublicKey(pub crypto.PublicKey) (sigType uint8, hash c
 		return signaturePKCS1v15, crypto.MD5SHA1, nil
 	case *ecdsa.PublicKey:
 		return signatureECDSA, crypto.SHA1, nil
+	case *sm2.PublicKey:
+		return signatureSM2, gmcrypto.SM3.ToHash(), nil
 	case ed25519.PublicKey:
 		// RFC 8422 specifies support for Ed25519 in TLS 1.0 and 1.1,
 		// but it requires holding on to a handshake transcript to do a
@@ -207,6 +231,8 @@ func signatureSchemesForCertificate(version uint16, cert *Certificate) []Signatu
 		default:
 			return nil
 		}
+	case *sm2.PublicKey:
+		sigAlgs = []SignatureScheme{SM2WITHSM3}
 	case *rsa.PublicKey:
 		size := pub.Size()
 		sigAlgs = make([]SignatureScheme, 0, len(rsaSignatureSchemes))

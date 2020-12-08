@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/studyzy/gmcrypto/sm2"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -144,6 +145,8 @@ func curveForCurveID(id CurveID) (elliptic.Curve, bool) {
 		return elliptic.P384(), true
 	case CurveP521:
 		return elliptic.P521(), true
+	case CurveSM2:
+		return sm2.P256Sm2(), true
 	default:
 		return nil, false
 	}

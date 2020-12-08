@@ -9,10 +9,11 @@ import (
 	"crypto/md5"
 	"crypto/rsa"
 	"crypto/sha1"
-	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/studyzy/gmcrypto/x509"
 )
 
 var errClientKeyExchange = errors.New("tls: invalid ClientKeyExchange message")
@@ -106,7 +107,7 @@ func md5SHA1Hash(slices [][]byte) []byte {
 // the sigType (for earlier TLS versions). For Ed25519 signatures, which don't
 // do pre-hashing, it returns the concatenation of the slices.
 func hashForServerKeyExchange(sigType uint8, hashFunc crypto.Hash, version uint16, slices ...[]byte) []byte {
-	if sigType == signatureEd25519 {
+	if sigType == signatureEd25519 || sigType == signatureSM2 {
 		var signed []byte
 		for _, slice := range slices {
 			signed = append(signed, slice...)
@@ -154,7 +155,7 @@ func (ka *ecdheKeyAgreement) generateServerKeyExchange(config *Config, cert *Cer
 	if curveID == 0 {
 		return nil, errors.New("tls: no supported elliptic curves offered")
 	}
-	if _, ok := curveForCurveID(curveID); curveID != X25519 && !ok {
+	if _, ok := curveForCurveID(curveID); curveID != X25519 && curveID != CurveSM2 && !ok {
 		return nil, errors.New("tls: CurvePreferences includes unsupported curve")
 	}
 
@@ -252,7 +253,9 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 		return errors.New("tls: server selected unsupported curve")
 	}
 	curveID := CurveID(skx.key[1])<<8 | CurveID(skx.key[2])
-
+	if cert.SignatureAlgorithm.IsGM() {
+		curveID = CurveSM2 //TODO 传入的是23，强行改了？
+	}
 	publicLen := int(skx.key[3])
 	if publicLen+4 > len(skx.key) {
 		return errServerKeyExchange
@@ -265,7 +268,7 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 		return errServerKeyExchange
 	}
 
-	if _, ok := curveForCurveID(curveID); curveID != X25519 && !ok {
+	if _, ok := curveForCurveID(curveID); curveID != X25519 && curveID != CurveSM2 && !ok {
 		return errors.New("tls: server selected unsupported curve")
 	}
 

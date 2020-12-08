@@ -11,7 +11,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/subtle"
-	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +18,9 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/studyzy/gmcrypto/sm2"
+	"github.com/studyzy/gmcrypto/x509"
 )
 
 type clientHandshakeState struct {
@@ -120,7 +122,7 @@ func (c *Conn) makeClientHello() (*clientHelloMsg, ecdheParameters, error) {
 		hello.cipherSuites = append(hello.cipherSuites, defaultCipherSuitesTLS13()...)
 
 		curveID := config.curvePreferences()[0]
-		if _, ok := curveForCurveID(curveID); curveID != X25519 && !ok {
+		if _, ok := curveForCurveID(curveID); curveID != X25519 && curveID != CurveSM2 && !ok {
 			return nil, nil, errors.New("tls: CurvePreferences includes unsupported curve")
 		}
 		params, err = generateECDHEParameters(config.rand(), curveID)
@@ -827,7 +829,7 @@ func (c *Conn) verifyServerCertificate(certificates [][]byte) error {
 	}
 
 	switch certs[0].PublicKey.(type) {
-	case *rsa.PublicKey, *ecdsa.PublicKey, ed25519.PublicKey:
+	case *rsa.PublicKey, *ecdsa.PublicKey, *sm2.PublicKey, ed25519.PublicKey:
 		break
 	default:
 		c.sendAlert(alertUnsupportedCertificate)
@@ -890,7 +892,7 @@ func certificateRequestInfoFromMsg(vers uint16, certReq *certificateRequestMsg) 
 			continue
 		}
 		switch sigType {
-		case signatureECDSA, signatureEd25519:
+		case signatureECDSA, signatureSM2, signatureEd25519:
 			if ecAvail {
 				cri.SignatureSchemes = append(cri.SignatureSchemes, sigScheme)
 			}

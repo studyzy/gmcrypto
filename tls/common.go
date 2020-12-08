@@ -14,23 +14,25 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
-	"github.com/studyzy/gmcrypto/x509"
 	"errors"
 	"fmt"
-	"github.com/studyzy/gmcrypto/internal/cpu"
 	"io"
 	"math/big"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/studyzy/gmcrypto/internal/cpu"
+	"github.com/studyzy/gmcrypto/x509"
 )
 
 const (
-	VersionTLS10 = 0x0301
-	VersionTLS11 = 0x0302
-	VersionTLS12 = 0x0303
-	VersionTLS13 = 0x0304
+	VersionTLS10   = 0x0301
+	VersionTLS11   = 0x0302
+	VersionTLS12   = 0x0303
+	VersionTLS13   = 0x0304
+	VersionGMTLS11 = 0x0101 //国密TLS版本为1.1
 
 	// Deprecated: SSLv3 is cryptographically broken, and is no longer
 	// supported by this package. See golang.org/issue/32716.
@@ -120,6 +122,7 @@ const (
 	CurveP384 CurveID = 24
 	CurveP521 CurveID = 25
 	X25519    CurveID = 29
+	CurveSM2  CurveID = 41
 )
 
 // TLS 1.3 Key Share. See RFC 8446, Section 4.2.8.
@@ -165,6 +168,7 @@ const (
 	signatureRSAPSS
 	signatureECDSA
 	signatureEd25519
+	signatureSM2
 )
 
 // directSigning is a standard Hash value that signals that no pre-hashing
@@ -189,6 +193,7 @@ var supportedSignatureAlgorithms = []SignatureScheme{
 	ECDSAWithP521AndSHA512,
 	PKCS1WithSHA1,
 	ECDSAWithSHA1,
+	SM2WITHSM3,
 }
 
 // helloRetryRequestRandom is set as the Random value of a ServerHello
@@ -326,6 +331,7 @@ const (
 	// Legacy signature and hash algorithms for TLS 1.2.
 	PKCS1WithSHA1 SignatureScheme = 0x0201
 	ECDSAWithSHA1 SignatureScheme = 0x0203
+	SM2WITHSM3    SignatureScheme = 0x0708
 )
 
 // ClientHelloInfo contains information from a ClientHello message in order to
@@ -790,6 +796,7 @@ var supportedVersions = []uint16{
 	VersionTLS12,
 	VersionTLS11,
 	VersionTLS10,
+	VersionGMTLS11,
 }
 
 func (c *Config) supportedVersions() []uint16 {
@@ -828,7 +835,7 @@ func supportedVersionsFromMax(maxVersion uint16) []uint16 {
 	return versions
 }
 
-var defaultCurvePreferences = []CurveID{X25519, CurveP256, CurveP384, CurveP521}
+var defaultCurvePreferences = []CurveID{CurveSM2, X25519, CurveP256, CurveP384, CurveP521}
 
 func (c *Config) curvePreferences() []CurveID {
 	if c == nil || len(c.CurvePreferences) == 0 {
@@ -1322,6 +1329,7 @@ func initDefaultCipherSuites() {
 			TLS_AES_128_GCM_SHA256,
 			TLS_CHACHA20_POLY1305_SHA256,
 			TLS_AES_256_GCM_SHA384,
+			TLS_SM4_GCM_SM3,
 		}
 	} else {
 		// Without AES-GCM hardware, we put the ChaCha20-Poly1305
@@ -1338,6 +1346,7 @@ func initDefaultCipherSuites() {
 			TLS_CHACHA20_POLY1305_SHA256,
 			TLS_AES_128_GCM_SHA256,
 			TLS_AES_256_GCM_SHA384,
+			TLS_SM4_GCM_SM3,
 		}
 	}
 

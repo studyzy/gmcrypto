@@ -20,14 +20,10 @@ import (
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	"github.com/studyzy/gmcrypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/studyzy/gmcrypto"
-	"github.com/studyzy/gmcrypto/sm2"
-	_ "github.com/studyzy/gmcrypto/sm3"
 	"io"
 	"math/big"
 	"net"
@@ -36,6 +32,11 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/studyzy/gmcrypto"
+	"github.com/studyzy/gmcrypto/sm2"
+	_ "github.com/studyzy/gmcrypto/sm3"
+	"github.com/studyzy/gmcrypto/x509/pkix"
 
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
@@ -230,6 +231,13 @@ func (algo SignatureAlgorithm) isRSAPSS() bool {
 	}
 }
 
+//是否是国密算法
+func (algo SignatureAlgorithm) IsGM() bool {
+	if algo == SM2WithSM3 || algo == SM2WithSHA1 || algo == SM2WithSHA256 {
+		return true
+	}
+	return false
+}
 func (algo SignatureAlgorithm) String() string {
 	for _, details := range signatureAlgorithmDetails {
 		if details.algo == algo {
@@ -255,7 +263,7 @@ var publicKeyAlgoName = [...]string{
 	DSA:     "DSA",
 	ECDSA:   "ECDSA",
 	Ed25519: "Ed25519",
-	SM2:"SM2",
+	SM2:     "SM2",
 }
 
 func (algo PublicKeyAlgorithm) String() string {
@@ -377,9 +385,9 @@ var signatureAlgorithmDetails = []struct {
 	{ECDSAWithSHA384, "ECDSA-SHA384", oidSignatureECDSAWithSHA384, ECDSA, crypto.SHA384},
 	{ECDSAWithSHA512, "ECDSA-SHA512", oidSignatureECDSAWithSHA512, ECDSA, crypto.SHA512},
 	{PureEd25519, "Ed25519", oidSignatureEd25519, Ed25519, crypto.Hash(0) /* no pre-hashing */},
-	{SM2WithSM3, "SM2-SM3", oidSignatureSM2WithSM3, ECDSA, crypto.Hash(gmcrypto.SM3)},
-	{SM2WithSHA1, "SM2-SHA1", oidSignatureSM2WithSHA1, ECDSA, crypto.SHA1},
-	{SM2WithSHA256, "SM2-SHA256", oidSignatureSM2WithSHA256, ECDSA, crypto.SHA256},
+	{SM2WithSM3, "SM2-SM3", oidSignatureSM2WithSM3, SM2, crypto.Hash(gmcrypto.SM3)},
+	{SM2WithSHA1, "SM2-SHA1", oidSignatureSM2WithSHA1, SM2, crypto.SHA1},
+	{SM2WithSHA256, "SM2-SHA256", oidSignatureSM2WithSHA256, SM2, crypto.SHA256},
 }
 
 // pssParameters reflects the parameters in an AlgorithmIdentifier that
@@ -513,7 +521,7 @@ var (
 	oidPublicKeyRSA     = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
 	oidPublicKeyDSA     = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
 	oidPublicKeyECDSA   = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
-	oidPublicKeySM2   = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301}// 参考：基于SM2密码算法的数字证书格式规范
+	oidPublicKeySM2     = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301} // 参考：基于SM2密码算法的数字证书格式规范
 	oidPublicKeyEd25519 = oidSignatureEd25519
 )
 
@@ -880,30 +888,32 @@ func signaturePublicKeyAlgoMismatchError(expectedPubKeyAlgo PublicKeyAlgorithm, 
 // CheckSignature verifies that signature is a valid signature over signed from
 // a crypto.PublicKey.
 func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey crypto.PublicKey) (err error) {
-	var hashType crypto.Hash
+	var hashType gmcrypto.Hash2
 	var pubKeyAlgo PublicKeyAlgorithm
 
 	for _, details := range signatureAlgorithmDetails {
 		if details.algo == algo {
-			hashType = details.hash
+			hashType = gmcrypto.NewHash2(details.hash)
 			pubKeyAlgo = details.pubKeyAlgo
 		}
 	}
 
 	switch hashType {
-	case crypto.Hash(0):
+	case gmcrypto.NewHash2(0):
 		if pubKeyAlgo != Ed25519 {
 			return ErrUnsupportedAlgorithm
 		}
-	case crypto.MD5:
+	case gmcrypto.MD5:
 		return InsecureAlgorithmError(algo)
 	default:
 		if !hashType.Available() {
 			return ErrUnsupportedAlgorithm
 		}
-		h := hashType.New()
-		h.Write(signed)
-		signed = h.Sum(nil)
+		if !algo.IsGM() { //国密算法，不能先Hash再签名
+			h := hashType.New()
+			h.Write(signed)
+			signed = h.Sum(nil)
+		}
 	}
 
 	switch pub := publicKey.(type) {
@@ -912,9 +922,9 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
 		}
 		if algo.isRSAPSS() {
-			return rsa.VerifyPSS(pub, hashType, signed, signature, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
+			return rsa.VerifyPSS(pub, hashType.ToHash(), signed, signature, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
 		} else {
-			return rsa.VerifyPKCS1v15(pub, hashType, signed, signature)
+			return rsa.VerifyPKCS1v15(pub, hashType.ToHash(), signed, signature)
 		}
 	case *dsa.PublicKey:
 		if pubKeyAlgo != DSA {
@@ -953,6 +963,23 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		}
 		if !ecdsa.Verify(pub, signed, ecdsaSig.R, ecdsaSig.S) {
 			return errors.New("x509: ECDSA verification failure")
+		}
+		return
+	case *sm2.PublicKey:
+		if pubKeyAlgo != SM2 && pubKeyAlgo != ECDSA {
+			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
+		}
+		ecdsaSig := new(ecdsaSignature)
+		if rest, err := asn1.Unmarshal(signature, ecdsaSig); err != nil {
+			return err
+		} else if len(rest) != 0 {
+			return errors.New("x509: trailing data after ECDSA signature")
+		}
+		if ecdsaSig.R.Sign() <= 0 || ecdsaSig.S.Sign() <= 0 {
+			return errors.New("x509: SM2 signature contained zero or negative values")
+		}
+		if !sm2.Sm2Verify(pub, signed, nil, ecdsaSig.R, ecdsaSig.S, hashType.New()) {
+			return errors.New("x509: SM2 verification failure")
 		}
 		return
 	case ed25519.PublicKey:
