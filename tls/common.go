@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/studyzy/gmcrypto/internal/cpu"
+	"github.com/studyzy/gmcrypto/sm2"
 	"github.com/studyzy/gmcrypto/x509"
 )
 
@@ -1032,6 +1033,11 @@ func (chi *ClientHelloInfo) SupportsCertificate(c *Certificate) error {
 			}
 			if !curveOk {
 				return errors.New("client doesn't support certificate curve")
+			}
+			ecdsaCipherSuite = true
+		case *sm2.PublicKey:
+			if vers != VersionGMTLS11 {
+				return errors.New("SM2 curve doesn't match version")
 			}
 			ecdsaCipherSuite = true
 		case ed25519.PublicKey:

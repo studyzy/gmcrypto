@@ -193,7 +193,7 @@ func (h *finishedHash) Write(msg []byte) (n int, err error) {
 }
 
 func (h finishedHash) Sum() []byte {
-	if h.version >= VersionTLS12 {
+	if h.version >= VersionTLS12 || h.version == VersionGMTLS11 {
 		return h.client.Sum(nil)
 	}
 

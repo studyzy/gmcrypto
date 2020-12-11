@@ -40,9 +40,10 @@ type CipherSuite struct {
 }
 
 var (
-	supportedUpToTLS12 = []uint16{VersionTLS10, VersionTLS11, VersionTLS12}
-	supportedOnlyTLS12 = []uint16{VersionTLS12}
-	supportedOnlyTLS13 = []uint16{VersionTLS13}
+	supportedUpToTLS12   = []uint16{VersionTLS10, VersionTLS11, VersionTLS12}
+	supportedOnlyTLS12   = []uint16{VersionTLS12}
+	supportedOnlyTLS13   = []uint16{VersionTLS13}
+	supportedOnlyGMTLS11 = []uint16{VersionGMTLS11}
 )
 
 // CipherSuites returns a list of cipher suites currently implemented by this
@@ -63,9 +64,10 @@ func CipherSuites() []*CipherSuite {
 		{TLS_AES_256_GCM_SHA384, "TLS_AES_256_GCM_SHA384", supportedOnlyTLS13, false},
 		{TLS_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256", supportedOnlyTLS13, false},
 		{TLS_SM4_GCM_SM3, "TLS_SM4_GCM_SM3", supportedOnlyTLS13, false},
+		{TLS_SM4_CCM_SM3, "TLS_SM4_CCM_SM3", supportedOnlyTLS13, false},
 
-		{TLS_ECDHE_SM4_SM3, "TLS_ECDHE_SM4_SM3", supportedUpToTLS12, false},
-		{TLS_ECC_SM4_SM3, "TLS_ECC_SM4_SM3", supportedUpToTLS12, false},
+		{TLS_ECDHE_SM4_SM3, "TLS_ECDHE_SM4_SM3", supportedOnlyGMTLS11, false},
+		{TLS_ECC_SM4_SM3, "TLS_ECC_SM4_SM3", supportedOnlyGMTLS11, false},
 
 		{TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA", supportedUpToTLS12, false},
 		{TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA, "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA", supportedUpToTLS12, false},
@@ -195,9 +197,10 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, ecdheRSAKA, suiteECDHE, cipher3DES, macSHA1, nil},
 	{TLS_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, rsaKA, 0, cipher3DES, macSHA1, nil},
 	//TODO 以下设置不知道对不对
-	{TLS_ECDHE_SM4_SM3, 16, 0, 4, ecdheECDSAKA, suiteECDHE | suiteECSign | suiteTLS12, cipherSM4, macSM3, nil},
-	{TLS_ECC_SM4_SM3, 16, 0, 4, ecdheECDSAKA, suiteECDHE | suiteECSign | suiteTLS12, cipherSM4, macSM3, nil},
+	{TLS_ECDHE_SM4_SM3, 16, 32, 16, ecdheECDSAKA, suiteECDHE | suiteECSign, cipherSM4, macSM3, nil},
+	{TLS_ECC_SM4_SM3, 16, 32, 16, ecdheECDSAKA, suiteECDHE | suiteECSign, cipherSM4, macSM3, nil},
 	{TLS_SM4_GCM_SM3, 16, 0, 4, ecdheECDSAKA, suiteECDHE | suiteECSign, nil, nil, aeadSM4GCM},
+	{TLS_SM4_CCM_SM3, 16, 0, 4, ecdheECDSAKA, suiteECDHE | suiteECSign, nil, nil, aeadSM4GCM},
 
 	// RC4-based cipher suites are disabled by default.
 	{TLS_RSA_WITH_RC4_128_SHA, 16, 20, 0, rsaKA, suiteDefaultOff, cipherRC4, macSHA1, nil},
@@ -591,10 +594,10 @@ const (
 	TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305   = TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 	TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305 = TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
 
-	//国密: https://datatracker.ietf.org/doc/draft-yang-tls-tls13-sm-suites/
+	//国密TLS1.3: https://datatracker.ietf.org/doc/draft-yang-tls-tls13-sm-suites/
 	TLS_SM4_GCM_SM3 uint16 = 0x00c6
 	TLS_SM4_CCM_SM3 uint16 = 0x00c7
-	//国密：国密SSL VPN技术规范
+	//国密TLS1.1：国密SSL VPN技术规范
 	TLS_ECDHE_SM4_SM3 uint16 = 0xe011
 	TLS_ECC_SM4_SM3   uint16 = 0xe013
 )

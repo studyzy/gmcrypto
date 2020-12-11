@@ -17,7 +17,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"github.com/studyzy/gmcrypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -25,6 +24,9 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"github.com/studyzy/gmcrypto/sm2"
+	"github.com/studyzy/gmcrypto/x509"
 )
 
 // Server returns a new TLS server side connection
@@ -265,6 +267,14 @@ func X509KeyPair(certPEMBlock, keyPEMBlock []byte) (Certificate, error) {
 		}
 	case *ecdsa.PublicKey:
 		priv, ok := cert.PrivateKey.(*ecdsa.PrivateKey)
+		if !ok {
+			return fail(errors.New("tls: private key type does not match public key type"))
+		}
+		if pub.X.Cmp(priv.X) != 0 || pub.Y.Cmp(priv.Y) != 0 {
+			return fail(errors.New("tls: private key does not match public key"))
+		}
+	case *sm2.PublicKey:
+		priv, ok := cert.PrivateKey.(*sm2.PrivateKey)
 		if !ok {
 			return fail(errors.New("tls: private key type does not match public key type"))
 		}

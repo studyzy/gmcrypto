@@ -286,7 +286,7 @@ func selectSignatureScheme(vers uint16, c *Certificate, peerAlgs []SignatureSche
 // an unsupported private key.
 func unsupportedCertificateError(cert *Certificate) error {
 	switch cert.PrivateKey.(type) {
-	case rsa.PrivateKey, ecdsa.PrivateKey:
+	case rsa.PrivateKey, ecdsa.PrivateKey, sm2.PrivateKey:
 		return fmt.Errorf("tls: unsupported certificate: private key is %T, expected *%T",
 			cert.PrivateKey, cert.PrivateKey)
 	case *ed25519.PrivateKey:
@@ -308,6 +308,8 @@ func unsupportedCertificateError(cert *Certificate) error {
 		default:
 			return fmt.Errorf("tls: unsupported certificate curve (%s)", pub.Curve.Params().Name)
 		}
+	case *sm2.PublicKey:
+		return fmt.Errorf("tls: unsupported certificate curve (%s)", pub.Curve.Params().Name)
 	case *rsa.PublicKey:
 		return fmt.Errorf("tls: certificate RSA key size too small for supported signature algorithms")
 	case ed25519.PublicKey:

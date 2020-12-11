@@ -2069,7 +2069,9 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 		default:
 			err = errors.New("x509: unknown elliptic curve")
 		}
-
+	case *sm2.PublicKey:
+		pubType = SM2
+		sigAlgo.Algorithm = oidSignatureSM2WithSM3
 	case ed25519.PublicKey:
 		pubType = Ed25519
 		sigAlgo.Algorithm = oidSignatureEd25519

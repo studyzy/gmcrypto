@@ -15,8 +15,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"github.com/studyzy/gmcrypto/x509"
-	"github.com/studyzy/gmcrypto/x509/pkix"
 	"encoding/pem"
 	"flag"
 	"log"
@@ -25,6 +23,10 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/studyzy/gmcrypto/sm2"
+	"github.com/studyzy/gmcrypto/x509"
+	"github.com/studyzy/gmcrypto/x509/pkix"
 )
 
 var (
@@ -42,6 +44,8 @@ func publicKey(priv interface{}) interface{} {
 	case *rsa.PrivateKey:
 		return &k.PublicKey
 	case *ecdsa.PrivateKey:
+		return &k.PublicKey
+	case *sm2.PrivateKey:
 		return &k.PublicKey
 	case ed25519.PrivateKey:
 		return k.Public().(ed25519.PublicKey)
